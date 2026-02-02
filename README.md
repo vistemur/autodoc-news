@@ -13,7 +13,7 @@ selecting article opens a web page
 ## optimizations 🚀
 
 - pagination (new news added with scroll)
-- image local cache (images saved to app memmory for quik access)
+- image local cache (images saved to app memmory for quick access)
 - image disk cache (images saved to disk cache folder to save network traffic)
 - web view is shared and preloaded
 
