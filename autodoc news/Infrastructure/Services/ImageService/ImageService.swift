@@ -107,7 +107,7 @@ class ImageService {
     }
     
     private func removeOldestImages() {
-        let filtered = imageHolders.filter({ $0.value.loadingState == .markedForDeletion })
+        let filtered = imageHolders.filter({ $0.value.loadingState == .markedForDeletion || $0.value.loadingState == .loaded })
         let delete = ImageServiceValues.maxCachedImages
         if filtered.count < delete {
             return
