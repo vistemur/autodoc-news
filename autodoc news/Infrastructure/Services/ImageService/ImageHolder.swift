@@ -62,5 +62,6 @@ class ImageHolder: Hashable, Equatable {
         case loaded
         case notLoaded
         case cleared
+        case markedForDeletion
     }
 }

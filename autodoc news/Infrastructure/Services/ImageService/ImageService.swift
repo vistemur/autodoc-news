@@ -7,6 +7,7 @@ class ImageService {
     let imageDiskCacheService: ImageDiskCacheService
     var imageHolders = [String: ImageHolder]()
     var imageLoaders = Set<String>()
+    var requestsSinceClean = 0
     
     init(networkService: NetworkService,
          imageDiskCacheService: ImageDiskCacheService) {
@@ -20,10 +21,28 @@ class ImageService {
                 return nil
             }
             
+            requestsSinceClean += 1
+            if requestsSinceClean >= ImageServiceValues.cleanCycle {
+                Task {
+                    self.removeOldestImages()
+                }
+                requestsSinceClean = 0
+            }
+            
             if imageLoaders.contains(path) {
                 if imageHolders[path]?.loadingState == .cleared {
                     imageLoaders.remove(path)
                 }
+                return nil
+            }
+            
+            if self.imageLoaders.count > ImageServiceValues.maxLoaders {
+                Task {
+                    self.removeOldestLoaders()
+                }
+            }
+            
+            if imageHolders[path]?.loadingState == .markedForDeletion {
                 return nil
             }
             
@@ -72,11 +91,39 @@ class ImageService {
         await networkService.requestData(endpoint: DataEndpoint(path: path))
     }
     
-    private func removeOldestImage(imageHolder: ImageHolder) {
-        imageLoaders.remove(imageHolder.path)
-        imageHolder.loadingTask?.cancel()
-        imageHolder.loadingTask = nil
-        imageHolder.loadingState = .cleared
-        imageHolder.image = nil
+    private func removeOldestLoaders() {
+        guard imageLoaders.count > ImageServiceValues.maxLoaders else {
+            return
+        }
+        
+        let loadingImageHolders = imageLoaders.compactMap({ imageHolders[$0] })
+        let sorted = loadingImageHolders.sorted(by: { $0.lastRequest.compare($1.lastRequest).rawValue == -1 })
+        let deleting = sorted.prefix(sorted.count - ImageServiceValues.maxLoaders)
+        
+        for imageHolder in deleting {
+            imageLoaders.remove(imageHolder.path)
+            imageHolder.clear()
+        }
     }
+    
+    private func removeOldestImages() {
+        let filtered = imageHolders.filter({ $0.value.loadingState == .markedForDeletion })
+        let delete = ImageServiceValues.maxCachedImages
+        if filtered.count < delete {
+            return
+        }
+        
+        let deleting = filtered.sorted(by: { $0.value.lastRequest.compare($1.value.lastRequest).rawValue == -1 }).prefix(filtered.count - delete)
+        
+        for (path, imageHolder) in deleting {
+            imageLoaders.remove(path)
+            imageHolder.clear()
+        }
+    }
+}
+
+fileprivate enum ImageServiceValues {
+    static let cleanCycle = 10
+    static let maxLoaders = 50
+    static let maxCachedImages = 100
 }

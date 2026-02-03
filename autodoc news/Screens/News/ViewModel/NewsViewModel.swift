@@ -71,7 +71,8 @@ extension NewsViewModel: NewsViewControllerOutput {
     
     func collectionView(_ collectionView: UICollectionView, didEndDisplaying cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
         if let cell = cell as? NewsCollectionViewCell {
-            cell.data?.imageHolder?.clear()
+            cell.data?.imageHolder?.loadingState = .markedForDeletion
+            //cell.data?.imageHolder?.clear()
         }
     }
 }
